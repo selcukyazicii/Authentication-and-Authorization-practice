@@ -85,5 +85,34 @@ namespace authDemo.Controllers
             }
             return Unauthorized();
         }
+
+        [HttpPost]
+        [Route("RegisterAdmin")]
+        public async Task<IActionResult> RegisterAdmin([FromBody] RegisterModel model)
+        {
+            var userExist =await _userManager.FindByNameAsync(model.UserName);
+            if (userExist!=null)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new Response { Message = "User already exist", Status = "Error" });
+            }
+            ApplicationUser user = new ApplicationUser()
+            {
+                UserName = model.UserName,
+                Email = model.Email,
+                SecurityStamp = Guid.NewGuid().ToString()
+            };
+            var result = await _userManager.CreateAsync(user, model.Password);
+            if (!result.Succeeded)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new Response { Message = "Failed", Status = "Error" });
+            }
+            if (!await _roleManager.RoleExistsAsync(UserRoles.Admin))
+                await _roleManager.CreateAsync(new IdentityRole(UserRoles.Admin));
+            if (!await _roleManager.RoleExistsAsync(UserRoles.User))
+                await _roleManager.CreateAsync(new IdentityRole(UserRoles.User));
+            if (await _roleManager.RoleExistsAsync(UserRoles.Admin))           
+                await _userManager.AddToRoleAsync(user, UserRoles.Admin);
+            return Ok(new Response { Status = "Success", Message = "User Created Success" });
+        }
     }
 }
